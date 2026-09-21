@@ -39,25 +39,55 @@ All rules live in `js/config.js` — edit that file to tune them; no engine chan
 needed. Excluded jobs are shown (with the reason) in a collapsible panel so you can
 see exactly why anything was dropped.
 
-## About LinkedIn data
+## Live job data (real postings)
 
-The board **cannot legally or technically scrape LinkedIn** — LinkedIn requires
-login, blocks automated scraping in its Terms of Service, and its Jobs API is
-partner-only. So the built-in feed is **synthetic demo data** (clearly labelled in
-the UI), and real data must come through an adapter you point at a source you're
-allowed to use.
+The board reads real jobs through `/api/jobs` — a small Vercel serverless proxy
+that calls a data provider **server-side** (so the API token stays secret and
+there are no browser CORS/timeout issues) and normalizes results into the board's
+job shape. The static front-end just fetches `/api/jobs`.
+
+Two providers are supported (set `JOBS_PROVIDER`):
+
+| Provider  | Env vars needed            | Notes |
+| --------- | -------------------------- | ----- |
+| `apify`   | `APIFY_TOKEN` (+ optional `APIFY_ACTOR`, `APIFY_INPUT`) | Runs a LinkedIn jobs actor on [Apify](https://apify.com). Free tier gives ~$5/mo credits; most LinkedIn actors are pay-per-result, so heavy use needs a paid plan. |
+| `jsearch` | `RAPIDAPI_KEY`             | [JSearch on RapidAPI](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch) aggregates Google-for-Jobs (incl. LinkedIn-sourced posts). Free tier ~200 req/mo, fast, ToS-clean — **recommended**. |
+
+### Setup
+
+1. Get a key: an [Apify API token](https://console.apify.com/account/integrations)
+   **or** a [RapidAPI/JSearch key](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch).
+2. In Vercel: **Project → Settings → Environment Variables**, add the relevant
+   vars from [`.env.example`](./.env.example) (e.g. `JOBS_PROVIDER=jsearch` and
+   `RAPIDAPI_KEY=…`), then redeploy.
+3. Open the site — the **Live jobs** feed is selected by default. Until a token is
+   configured it shows a notice and falls back to labelled demo data.
+
+### Why real jobs still get filtered
+
+Real LinkedIn posts have **no structured minimum-experience field**, so the proxy
+parses experience from the description and LinkedIn's seniority level. Per the
+spec, a job whose experience (or posting date, or post URL) can't be determined is
+**excluded, not guessed** — so expect the live feed to legitimately drop some
+postings. The "Filtered out" panel shows exactly why.
+
+> **LinkedIn note:** LinkedIn itself has no open Jobs API and blocks direct
+> scraping in its Terms of Service. That's why data comes via a third-party
+> provider you have credentials for, not from scraping LinkedIn directly.
 
 ## Project layout
 
 ```
 index.html          Board UI (NCR + Remote tables, recruiter tracking, controls)
 css/styles.css      Styling (light/dark)
+api/jobs.js         Serverless proxy: calls Apify/JSearch server-side, normalizes to job shape
 js/config.js        The QA "skill set": roles, locations, skills, experience & freshness rules
 js/eligibility.js   Pure filtering engine (experience/location/role/date/verify + dedupe + recruiter stats)
-js/adapters.js      Pluggable feed-adapter interface + SampleAdapter + JsonUrlAdapter
+js/adapters.js      Pluggable feed-adapter interface + LiveApiAdapter + SampleAdapter + JsonUrlAdapter
 js/data.js          Synthetic demo jobs (includes deliberately-excluded examples)
 js/render.js        Renders the spec's output format
-js/app.js           Wires adapter -> engine -> UI
+js/app.js           Wires adapter -> engine -> UI (live feed default, demo fallback)
+.env.example        Env vars for the live feed proxy
 ```
 
 ## Adding a real feed adapter

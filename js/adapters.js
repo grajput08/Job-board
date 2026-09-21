@@ -89,6 +89,31 @@ export class JsonUrlAdapter extends BaseAdapter {
   }
 }
 
+// --- Live API adapter: reads real jobs from our /api/jobs serverless proxy ---
+// The proxy calls Apify (or JSearch) server-side with a secret token and returns
+// normalized jobs. If the feed isn't configured yet, it responds with
+// { configured:false } and this adapter throws a flagged error so the app can
+// fall back to the demo feed with a helpful message.
+export class LiveApiAdapter extends BaseAdapter {
+  constructor(endpoint = "/api/jobs") {
+    super("live", "Live jobs (Apify / API)");
+    this.endpoint = endpoint;
+  }
+  async fetchJobs() {
+    const res = await fetch(this.endpoint, { headers: { Accept: "application/json" } });
+    const data = await res.json().catch(() => ({}));
+    if (data && data.configured === false) {
+      const e = new Error(data.error || "Live feed is not configured yet.");
+      e.notConfigured = true;
+      throw e;
+    }
+    if (!res.ok) throw new Error((data && data.error) || `API responded ${res.status}`);
+    const jobs = Array.isArray(data) ? data : data.jobs;
+    if (!Array.isArray(jobs)) throw new Error("API did not return a jobs array");
+    return jobs;
+  }
+}
+
 // --- Adapter registry --------------------------------------------------------
 const registry = new Map();
 
@@ -103,5 +128,7 @@ export function listAdapters() {
   return [...registry.values()];
 }
 
-// Register the built-in adapter by default.
+// Register adapters. Live feed first so it's the default selection; the
+// built-in sample adapter remains as an offline/demo fallback.
+registerAdapter(new LiveApiAdapter());
 registerAdapter(new SampleAdapter());

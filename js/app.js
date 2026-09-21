@@ -4,7 +4,7 @@
 
 import { QA_CONFIG } from "./config.js";
 import { processJobs } from "./eligibility.js";
-import { listAdapters, getAdapter, JsonUrlAdapter, registerAdapter } from "./adapters.js";
+import { listAdapters, getAdapter, JsonUrlAdapter, SampleAdapter, registerAdapter } from "./adapters.js";
 import { renderResults, renderError, renderLoading } from "./render.js";
 
 const els = {
@@ -49,14 +49,36 @@ async function loadJobs() {
   }
 
   renderLoading(els.results);
+  let notice = "";
   try {
     const jobs = await adapter.fetchJobs();
     lastResults = processJobs(jobs, QA_CONFIG, new Date());
     renderResults(els.results, applySearch(lastResults, els.search.value), {
       sourceLabel: adapter.label,
+      notice,
     });
     els.updated.textContent = `Updated ${new Date().toLocaleString()}`;
   } catch (err) {
+    // Live feed unavailable or not configured yet — fall back to demo data so
+    // the board still renders, with a clear explanation.
+    if (adapterId === "live") {
+      notice = err.notConfigured
+        ? `Live feed not configured yet — showing demo data. ${err.message}`
+        : `Live feed unavailable (${err.message}) — showing demo data.`;
+      try {
+        const jobs = await new SampleAdapter().fetchJobs();
+        lastResults = processJobs(jobs, QA_CONFIG, new Date());
+        renderResults(els.results, applySearch(lastResults, els.search.value), {
+          sourceLabel: "Sample QA feed (demo fallback)",
+          notice,
+        });
+        els.updated.textContent = `Updated ${new Date().toLocaleString()}`;
+        return;
+      } catch (fallbackErr) {
+        renderError(els.results, `Could not load feed: ${fallbackErr.message}`);
+        return;
+      }
+    }
     renderError(els.results, `Could not load feed: ${err.message}`);
   }
 }

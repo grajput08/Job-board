@@ -111,7 +111,11 @@ function excludedList(excluded) {
 
 export function renderResults(root, results, meta = {}) {
   const { total, ncr, remote, activeRecruiters, excluded } = results;
+  const noticeHtml = meta.notice
+    ? `<div class="notice">${esc(meta.notice)}</div>`
+    : "";
   root.innerHTML = `
+    ${noticeHtml}
     <p class="headline">Found <strong>${total}</strong> new QA job${total === 1 ? "" : "s"} in the last 7 days
       <span class="meta">(${ncr.length} NCR · ${remote.length} Remote${meta.sourceLabel ? ` · source: ${esc(meta.sourceLabel)}` : ""})</span>
     </p>

@@ -19,9 +19,10 @@
 
   <div class="wrap">
     <div class="demo-banner">
-      <strong>Demo data.</strong> The built-in feed is synthetic sample data for showing how the
-      board works — not real vacancies. Plug in a real feed via a JSON URL or a custom adapter
-      (see <code>js/adapters.js</code> and the README).
+      <strong>Feed source.</strong> <em>Live jobs</em> pulls real postings via the
+      <code>/api/jobs</code> proxy (Apify or JSearch — configure a token in Vercel; see README).
+      Until that's set up it falls back to labelled demo data. You can also point the
+      <em>JSON feed</em> adapter at any URL that returns the normalized job shape.
     </div>
 
     <section class="controls">

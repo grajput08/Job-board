@@ -137,6 +137,10 @@ a:hover { text-decoration: underline; }
   padding: 2px 9px; border-radius: 999px; font-weight: 600;
 }
 
+.notice {
+  background: var(--warn-bg); border: 1px solid var(--warn-border);
+  border-radius: var(--radius); padding: 10px 14px; margin: 12px 0; font-size: .9rem;
+}
 .empty { color: var(--muted); font-style: italic; padding: 6px 2px; }
 .loading, .error { padding: 20px; text-align: center; color: var(--muted); }
 .error { color: var(--danger); }
