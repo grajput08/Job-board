@@ -95,9 +95,9 @@ async function fetchJSearch(params) {
     throw e;
   }
   const host = process.env.JSEARCH_HOST || "jsearch.p.rapidapi.com";
-  const query = params.q || "QA Engineer OR SDET OR Software Tester in India";
-  const numPages = Number(params.rows) > 10 ? 2 : 1;
-  const url = `https://${host}/search?query=${encodeURIComponent(query)}&page=1&num_pages=${numPages}&date_posted=week`;
+  const query = params.q || "QA Engineer OR SDET OR Software Tester OR QA Automation Engineer";
+  const country = process.env.JSEARCH_COUNTRY || "in"; // India
+  const url = `https://${host}/search?query=${encodeURIComponent(query)}&page=1&num_pages=2&country=${country}&date_posted=week`;
   const r = await fetch(url, {
     headers: {
       "x-rapidapi-key": key,
@@ -119,7 +119,13 @@ async function fetchJSearch(params) {
   }
   let data;
   try { data = JSON.parse(bodyText); } catch { throw new Error("JSearch returned non-JSON"); }
-  return (Array.isArray(data.data) ? data.data : []).map(normJSearch).filter((j) => j.title && j.postUrl);
+  // JSearch response shapes vary by version: data.data may be an array (classic),
+  // or an object { jobs: [...], cursor } (current). Handle both, plus data.jobs.
+  const arr = Array.isArray(data.data) ? data.data
+    : (data.data && Array.isArray(data.data.jobs)) ? data.data.jobs
+    : Array.isArray(data.jobs) ? data.jobs
+    : [];
+  return arr.map(normJSearch).filter((j) => j.title && j.postUrl);
 }
 
 // ---------------------------------------------------------------------------
