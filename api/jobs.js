@@ -94,19 +94,31 @@ async function fetchJSearch(params) {
     e.notConfigured = true;
     throw e;
   }
+  const host = process.env.JSEARCH_HOST || "jsearch.p.rapidapi.com";
   const query = params.q || "QA Engineer OR SDET OR Software Tester in India";
-  const url = `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&date_posted=week&num_pages=2`;
+  const numPages = Number(params.rows) > 10 ? 2 : 1;
+  const url = `https://${host}/search?query=${encodeURIComponent(query)}&page=1&num_pages=${numPages}&date_posted=week`;
   const r = await fetch(url, {
     headers: {
-      "X-RapidAPI-Key": key,
-      "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
+      "x-rapidapi-key": key,
+      "x-rapidapi-host": host,
     },
   });
+  const bodyText = await r.text().catch(() => "");
+  // Diagnostics -> Vercel runtime logs (never logs the key itself).
+  console.log(JSON.stringify({
+    tag: "jsearch",
+    url: url.replace(/query=[^&]*/, "query=***"),
+    status: r.status,
+    server: r.headers.get("server") || "",
+    keyLen: key.length,
+    bodyPreview: bodyText.slice(0, 200),
+  }));
   if (!r.ok) {
-    const t = await r.text().catch(() => "");
-    throw new Error(`JSearch request failed (${r.status}). ${t.slice(0, 300)}`);
+    throw new Error(`JSearch request failed (${r.status}). ${bodyText.slice(0, 300)}`);
   }
-  const data = await r.json();
+  let data;
+  try { data = JSON.parse(bodyText); } catch { throw new Error("JSearch returned non-JSON"); }
   return (Array.isArray(data.data) ? data.data : []).map(normJSearch).filter((j) => j.title && j.postUrl);
 }
 
